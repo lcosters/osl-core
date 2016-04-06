@@ -1,2 +1,7 @@
 
 *.txt~
+
+# Ignore MEG-ROI-nets (own repository at: github.com/OHBA-analysis/MEG-ROI-nets)
++ROInets*
+osl_network_analysis.m
+
