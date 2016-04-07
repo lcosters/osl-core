@@ -9,67 +9,56 @@ global OSLDIR;
 % MWW 2012
 %
 % does no path-changing if running in deployed mode (gw '13).
+% modernise the code (jh 2016)
 
 if ~isdeployed
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % check path for other versions of:
-    checklist={'fieldtrip', 'spm', 'osl', 'mne', 'netlab', 'fsl', 'fmt'};
-   
-    % and remove them:
-    oldpath=path;
-    indcolon=findstr(oldpath,':');
-    st=1;
-    restoredefaultpath;
-   
-    restoredpath=path;
-    addpath(genpath(osldir));
 
-    
- 	% remove spm-changes dir:
-	rmpath([osldir '/osl2/spm-changes']);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % check fsl has been setup
-    if isempty(getenv('FSLDIR')),
-       error('The environmental variable FSLDIR is not set. Please exit Matlab, ensure FSLDIR is set and then restart Matlab. See the Prerequisites section at https://sites.google.com/site/ohbaosl/download');
-    end;
+    assert( ~isempty('FSLDIR'), [ ...
+        'The environmental variable FSLDIR is not set. Please exit Matlab, ensure FSLDIR is set and then restart Matlab. ' ...
+        'See the Prerequisites section at https://sites.google.com/site/ohbaosl/download' ...
+    ]);
 
-    % try a dummy call to an fsl tool to make sure FSL is properly
-    % installed:
-    [status,res]=dos(['fslval']);
-    if(status~=1)
-        error('FSL is not installed properly. Perhaps check that the $FSLDIR/bin directory is in your PATH before starting Matlab. See the Prerequisites section at https://sites.google.com/site/ohbaosl/download');
-    end;
-   
-    addpath(sprintf('%s/etc/matlab',getenv('FSLDIR')));
+    % try a dummy call to an fsl tool to make sure FSL is properly installed:
+    [status,~] = system('fslval');
+    assert( status ~= 0, [ ...
+        'FSL is not installed properly. Perhaps check that the $FSLDIR/bin directory is in your PATH before starting Matlab. ' ...
+        'See the Prerequisites section at https://sites.google.com/site/ohbaosl/download' ...
+    ]);
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % save current path and restore it
+    oldpath = strsplit(path,':');
+    restoredefaultpath;
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-       
-    jj=1;
-    found=zeros(length(checklist),1);
+    % check path for other versions of:
+    checklist = { 'fieldtrip', 'spm', 'osl', 'mne', 'netlab', 'fsl', 'fmt' };
+    oldpath   = oldpath(cellfun( @isempty, strfind(oldpath,matlabroot) )); % remove Matlab paths from oldpaths
+    
+    nold   = numel(oldpath);
+    ncheck = numel(checklist);
+    found  = false(1,nold);
+    
+    for i = 1:ncheck
+        found = found | ~cellfun( @isempty, strfind(oldpath,checklist{i}) );
+    end
+    addpath(oldpath{~found});
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % add external libraries
+    external = { fullfile(getenv('FSLDIR'),'etc/matlab'), 'fmt', 'hmmbox_4_1', 'layouts', 'netlab3.3/netlab',...
+        'netlab3.3/nethelp', 'ICA_tools/FastICA_25', 'ICA_tools/icasso122', 'spm12' };
+    externalgen = {'std_masks'};
+    
+    cellfun( @(x) addpath(fullfile(osldir,x)), external );
+    cellfun( @(x) addpath(genpath(fullfile(osldir,x))), externalgen );
    
-    for ii=1:length(indcolon),
-        pathlistitem=oldpath(st:indcolon(ii)-1);
-       
-        ok=1;
-        for kk=1:length(checklist),
-            if(any(findstr(pathlistitem,checklist{kk}))),
-                ok=0;
-                found(kk)=1;
-            end;
-        end;
-       
-        if(ok)
-            if(~any(findstr(restoredpath,pathlistitem)))
-                addpath(pathlistitem);
-            end;
-        end;
-       
-        st=indcolon(ii)+1;
-    end;
-   
-end % if ~ isdeployed
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Copy changes to SPM code from osl
+% Copy changes to SPM code from osl
 filelist={};targetdir={};
 
 filelist{end+1}='osl2/spm-beamforming-toolbox-osl-addons/bf_output_montage_osl.m';
@@ -123,33 +112,30 @@ targetdir{end+1}='spm12/@meeg';
 filelist{end+1} ='osl2/spm-changes/private/ft_getopt.c';
 targetdir{end+1}='spm12/external/fieldtrip/src/';
 
-for kk=1:length(filelist),
-    runcmd(['cp -f ' osldir '/' filelist{kk} ' ' osldir '/' targetdir{kk}]);
+for k=1:length(filelist),
+    copyfile( fullfile(osldir,filelist{k}), fullfile(osldir,targetdir{k}), 'f' );
 end;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 OSLDIR=osldir;
 
-% Ensure osl2 dir gets priority in path
-addpath(genpath([osldir '/osl2/']))
+% Add osl2 at the end to override any other path (make sure we dont add the git folders though)
+osl2_subfolders = strsplit(genpath(fullfile(osldir,'osl2')),':');
+osl2_gitfolders = strfind( osl2_subfolders, '.git' );
 
-% Remove SPM12 from path and re-add only top level folder
-spm_rmpath
-addpath([osldir '/spm12/'])
+addpath(osl2_subfolders{cellfun( @isempty, osl2_gitfolders )});
 
+% Startup SPM12
 spm_get_defaults('cmdline',true);
 spm eeg;
 close all;
 
-if ~isdeployed
-    for kk=1:length(checklist),
-        if found(kk),
-            warning(['Found and removed paths that contain the string ' checklist{kk}]);
-        end;
-    end;
-end % if ~ isdeployed
+% Show warning about removed paths at the end
+if ~isdeployed && any(found)
+    wmsg = strjoin( oldpath(found), '\n' );
+    warning(['The following paths were removed because of conflicts:' 10 wmsg]);
+end
 
-
-% remove fieldtrip replication
-rmpath(genpath(fullfile(osldir, 'spm12/external/fieldtrip/external/')));
-
+% Remove fieldtrip replication
+fpduplicate = fullfile( osldir, 'spm12/external/fieldtrip/external/' );
+if exist(fpduplicate,'dir'), rmpath(genpath(fpduplicate)); end
