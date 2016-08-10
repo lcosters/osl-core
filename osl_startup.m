@@ -48,10 +48,11 @@ if ~isdeployed
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % add external libraries
-    external = { fullfile(getenv('FSLDIR'),'etc/matlab'), 'fmt', 'hmmbox_4_1', 'layouts', 'netlab3.3/netlab',...
+    external = { 'fmt', 'hmmbox_4_1', 'layouts', 'netlab3.3/netlab',...
         'netlab3.3/nethelp', 'ICA_tools/FastICA_25', 'ICA_tools/icasso122', 'spm12' };
     externalgen = {'std_masks'};
     
+    addpath(fullfile(getenv('FSLDIR'),'etc/matlab'));
     cellfun( @(x) addpath(fullfile(osldir,x)), external );
     cellfun( @(x) addpath(genpath(fullfile(osldir,x))), externalgen );
    
@@ -121,13 +122,15 @@ OSLDIR=osldir;
 
 % Add osl2 at the end to override any other path (make sure we dont add the git folders though)
 osl2_subfolders = strsplit(genpath(fullfile(osldir,'osl2')),':');
-osl2_gitfolders = strfind( osl2_subfolders, '.git' );
+osl2_incfolders = cellfun( @isempty, strfind( osl2_subfolders, '.git' ) );
+osl2_incfolders = cellfun( @isempty, strfind( osl2_subfolders, 'spm-changes' ) ) & osl2_incfolders;
+osl2_incfolders = cellfun( @isempty, strfind( osl2_subfolders, 'spm-beamforming-toolbox-osl-addons' ) ) & osl2_incfolders;
 
-addpath(osl2_subfolders{cellfun( @isempty, osl2_gitfolders )});
+addpath(osl2_subfolders{osl2_incfolders});
 
 % Startup SPM12
-spm_get_defaults('cmdline',true);
-spm eeg;
+spm_jobman('initcfg');
+spm('ChMod','eeg');
 close all;
 
 % Show warning about removed paths at the end
