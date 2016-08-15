@@ -122,10 +122,10 @@ OSLDIR=osldir;
 
 % Add osl2 at the end to override any other path (make sure we dont add the git folders though)
 osl2_subfolders = strsplit(genpath(fullfile(osldir,'osl2')),':');
-osl2_incfolders = cellfun( @isempty, strfind( osl2_subfolders, '.git' ) );
-osl2_incfolders = cellfun( @isempty, strfind( osl2_subfolders, 'spm-changes' ) ) & osl2_incfolders;
-osl2_incfolders = cellfun( @isempty, strfind( osl2_subfolders, 'spm-beamforming-toolbox-osl-addons' ) ) & osl2_incfolders;
-
+osl2_incfolders = ...
+    cellfun( @isempty, strfind( osl2_subfolders, '.git' ) ) & ...
+    cellfun( @isempty, strfind( osl2_subfolders, 'spm-changes' ) ) & ...
+    cellfun( @isempty, strfind( osl2_subfolders, 'spm-beamforming-toolbox-osl-addons' ) );
 addpath(osl2_subfolders{osl2_incfolders});
 
 % Startup SPM12
