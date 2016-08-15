@@ -11,9 +11,13 @@ global OSLDIR;
 % does no path-changing if running in deployed mode (gw '13).
 % modernise the code (jh 2016)
 
+    fprintf( '[OSL2] Starting up from folder "%s"...\n', osldir );
+
     if ~isdeployed
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        fprintf( '\t Check FSL installation...\n' );
+        
         % check fsl has been setup
         assert( ~isempty('FSLDIR'), [ ...
             'The environment variable FSLDIR is not set. Please exit Matlab, ensure FSLDIR is set and then restart Matlab. ' ...
@@ -28,6 +32,8 @@ global OSLDIR;
         ]);
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        fprintf( '\t Set paths...\n' );
+        
         % set path
         inc_ext = { 'fmt', 'hmmbox_4_1', 'layouts', 'netlab3.3/netlab', 'netlab3.3/nethelp', ...
             'ICA_tools/FastICA_25', 'ICA_tools/icasso122', 'spm12' };
@@ -49,6 +55,8 @@ global OSLDIR;
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    fprintf( '\t Apply changes to SPM...\n' );
+    
     % Copy changes to SPM code from osl
     filelist={};targetdir={};
 
@@ -111,12 +119,9 @@ global OSLDIR;
     OSLDIR=osldir;
 
     % Startup SPM12
+    fprintf( '\t Start SPM...\n' );
     spm_jobman('initcfg');
     spm('ChMod','eeg');
     close all;
-
-    % Remove fieldtrip replication
-    fpduplicate = fullfile( osldir, 'spm12/external/fieldtrip/external/' );
-    if ~isempty(strfind(path,fduplicate)), rmpath(genpath(fpduplicate)); end
 
 end
