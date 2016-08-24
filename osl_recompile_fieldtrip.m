@@ -1,8 +1,15 @@
-function osl_recompile_fieldtrip()
+function [replaced,notfound] = osl_recompile_fieldtrip( fieldtrip_dir )
+%
+% [replaced,notfound] = osl_recompile_fieldtrip( [fieldtrip_dir] )
+%
+% if fieldtrip_dir is omitted, it defaults to OSLDIR/spm12/external/fieldtrip.
+%
 %
 % There seem to be recurrent problems caused by Mex files in FieldTrip.
 % This script cleans up, compiles and replaces all occurrences of Mex files in FieldTrip.
 %
+%
+% __NOTE__
 % For additional issues involving mxSerialise, see: 
 % http://undocumentedmatlab.com/blog/serializing-deserializing-matlab-data
 %
@@ -29,7 +36,9 @@ function osl_recompile_fieldtrip()
     global OSLDIR
 
     current_dir = pwd;
-    fieldtrip_dir = fullfile( OSLDIR, 'spm12/external/fieldtrip' );
+    if nargin < 1
+        fieldtrip_dir = fullfile( OSLDIR, 'spm12/external/fieldtrip' );
+    end
     
     % delete all source Mex-files
     src_clean    = find_and_delete_mex(fullfile( fieldtrip_dir, 'src' ));
@@ -54,6 +63,8 @@ function osl_recompile_fieldtrip()
     cd(current_dir);
     
     % copy newly compiled version instead
+    replaced = {};
+    notfound = {};
     for i = 1:numel(mex_clean) 
         
         file = mex_clean{i};
@@ -63,11 +74,14 @@ function osl_recompile_fieldtrip()
             case src_names
                 delete([file '.mex*']);
                 copyfile( fullfile(fieldtrip_dir,'src',[name '.' mexext]), fileparts(file) );
+                replaced{end+1} = file;
             case fileio_names
                 delete([file '.mex*']);
                 copyfile( fullfile(fieldtrip_dir,'fileio/@uint64',[name '.' mexext]), fileparts(file) );
+                replaced{end+1} = file;
             otherwise
                 warning('Could not find a replacement for Mex-file: "%s"',mex_clean{i});
+                notfound{end+1} = file;
         end
     end
     
@@ -75,6 +89,11 @@ end
 
 function b = basename(file)
     [~,b]=fileparts(file); 
+end
+
+function r = remext(file)
+    [p,n]=fileparts(file);
+    r = fullfile(p,n);
 end
 
 function mex_files = find_mex_files(folder)
@@ -110,13 +129,6 @@ end
 
 function mex_clean = clean_mex_files(mex_files)
 
-    n = numel(mex_files);
-    mex_clean = cell(1,n);
-    
-    for i = 1:n
-        [p,n,e] = fileparts(mex_files{i});
-        mex_clean{i} = fullfile(p,n);
-    end
-    mex_clean = unique(mex_clean);
+    mex_clean = unique(cellfun( @remext, mex_files, 'UniformOutput', false ));
     
 end
