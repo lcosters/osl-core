@@ -44,7 +44,7 @@ global OSLDIR;
         inc_osl = cellfun( @(x) genpath(fullfile( osldir, 'osl2', x )), inc_osl, 'UniformOutput', false );
         inc_osl = [ fullfile(osldir,'osl2'), pathsep, strjoin(inc_osl,pathsep) ];
 
-        includes = { inc_osl, genpath(fullfile( osldir, 'std_masks' )), inc_ext };
+        includes = { inc_osl, inc_ext };
         includes = strjoin( includes, pathsep );
         includes = strsplit( includes, pathsep );
 
@@ -120,8 +120,9 @@ global OSLDIR;
 
     % Startup SPM12
     fprintf( '\t Start SPM...\n' );
-    spm_jobman('initcfg');
-    spm('ChMod','eeg');
+    %spm_jobman('initcfg');
+    %spm('ChMod','eeg');
+    spm('Defaults','EEG'); % quicker and no UI
     close all;
 
 end
