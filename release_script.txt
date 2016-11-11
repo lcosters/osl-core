@@ -3,13 +3,13 @@
 
 WORKINGDIR=/Users/woolrich/Desktop
 
-OSL2GITRELEASETAG=0.1
+OSL2GITRELEASETAG=0.2  # e.g create new release on github website: e.g. OSL2.0.2 for tag v0.2
 GLEANGITRELEASETAG=0.1 # note that GLEAN contains HMMMAR as a subproject
 MEGROInetsGITRELEASETAG=1.5.0
 
 # location of repository for supplementary directories
 SUPPDIRSDOWNLOADSITE=http://users.fmrib.ox.ac.uk/~woolrich/osl2
-SUPPDIRSNAME=osl2.0
+SUPPDIRSNAME=osl2_supporting_dirs # do not want file ext here
 
 # where we will upload osl release to
 OSLUPLOADDIR=woolrich@jalapeno.fmrib.ox.ac.uk:/home/fs0/woolrich/www/osl2
@@ -31,12 +31,9 @@ curl -L $SUPPDIRSDOWNLOADSITE/$SUPPDIRSNAME.tar.gz --output supporting_dirs.tar.
 
 # untar it
 rm -rf supporting_dirs
+
 tar xvf supporting_dirs.tar.gz
 rm -rf supporting_dirs.tar.gz
-
-# rename the top osl dir to reflect latest version number
-rm -rf osl2
-mv $SUPPDIRSNAME osl2
 
 ######
 # download current github osl release
@@ -67,8 +64,12 @@ mv $REPONAME-$GITRELEASETAG $REPONAME
 
 # update $REPONAME_version.m
 cd $WORKINGDIR
-rm -f osl2/$REPONAME/$REPONAME_version.m
-echo "function ret=$REPONAME_version, ret='$REPONAME.$GITRELEASETAG';" > osl2/$REPONAME/$REPONAME_version.m
+rm -f osl2/$REPONAME/${REPONAME}_version.m
+echo "function ret=${REPONAME}_version, ret='$REPONAME.$GITRELEASETAG';" > osl2/$REPONAME/${REPONAME}_version.m
+
+# also put a $REPONAME_version.m in the root osl2 dir
+rm -f osl2/${REPONAME}_version.m
+echo "function ret=${REPONAME}_version, ret='$REPONAME.$GITRELEASETAG';" > osl2/${REPONAME}_version.m
 
 ######
 # download current GLEAN osl release
@@ -100,8 +101,8 @@ mv $REPONAME-$GITRELEASETAG $REPONAME
 
 # update $REPONAME_version.m
 cd $WORKINGDIR
-rm -f osl2/$REPONAME/$REPONAME_version.m
-echo "function ret=$REPONAME_version, ret='$REPONAME.$GITRELEASETAG';" > osl2/$REPONAME/$REPONAME_version.m
+rm -f osl2/$REPONAME/${REPONAME}_version.m
+echo "function ret=${REPONAME}_version, ret='$REPONAME.$GITRELEASETAG';" > osl2/$REPONAME/${REPONAME}_version.m
 
 ######
 # download current MEG-ROI-nets osl release
@@ -132,8 +133,8 @@ mv $REPONAME-$GITRELEASETAG $REPONAME
 
 # update $REPONAME_version.m
 cd $WORKINGDIR
-rm -f osl2/$REPONAME/$REPONAME_version.m
-echo "function ret=$REPONAME_version, ret='$REPONAME.$GITRELEASETAG';" > osl2/$REPONAME/$REPONAME_version.m
+rm -f osl2/$REPONAME/${REPONAME}_version.m
+echo "function ret=${REPONAME}_version, ret='$REPONAME.$GITRELEASETAG';" > osl2/$REPONAME/${REPONAME}_version.m
 
 ######
 # create tar ball of osl
