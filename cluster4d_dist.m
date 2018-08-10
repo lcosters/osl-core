@@ -34,7 +34,11 @@ first = 1;
 
 tstats=[];
 for i = 1:length(tp);
-    fname = sprintf('%s/%s/%04.0f/stats%04.0f_clustere_tstat1.nii.gz',dirname,subdirname,tp(i),tp(i));
+    if strcmp(S.permmeth, 'clustextent')
+        fname = sprintf('%s/%s/%04.0f/stats%04.0f_clustere_tstat1.nii.gz',dirname,subdirname,tp(i),tp(i));
+    elseif strcmp(S.permmeth, 'clustmass')
+            fname = sprintf('%s/%s/%04.0f/stats%04.0f_clusterm_tstat1.nii.gz',dirname,subdirname,tp(i),tp(i));
+    end
     f = nii.load(fname);
     fname_rawt = sprintf('%s/%s/%04.0f/stats%04.0f_tstat1.nii.gz',dirname,subdirname,tp(i),tp(i));
     tmp=nii.load(fname_rawt);
@@ -42,61 +46,90 @@ for i = 1:length(tp);
        tstats=zeros([size(tmp) length(tp)]); 
     end;
     
-    tstats(:,:,:,i) = tmp;
+    try 
+        tstats(:,:,:,i) = tmp;
+    catch 
+        tstats(:,:,i)=tmp; %small workaround for working with parcellated data
+    end
 
     if first %first image - read in dimensions
         Vdim = size(f);
         nV = prod(Vdim);
-        X = sparse(nV,nT);
+        Xreal = sparse(nV,nT); % XT is nVoxels x timepoints and contains t-values of clusters (needed for clustermass permutation tests)
         first = 0;
     end
-    X(:,i) = f(:);
+    Xreal(:,i) = f(:);
 end
-X = clusterX(X);
-Creal = unique(X);
+Xreal = clusterX(Xreal); % Xreal is nVoxels x timepoints and contains cluster sizes (clustextent) or cluster t-values (clustmass)
+Creal = unique(Xreal);
 Creal(Creal==0) = [];
 if ~isempty(Creal)
     for i = 1:length(Creal)
-        nVreal(i) = sum(X(find(X))==Creal(i)); %number of voxels in each indexed cluster
+        nVreal(i) = sum(Xreal(find(Xreal))==Creal(i)); 
     end
 else
     nVreal = 0;
 end
-clustimg = (reshape(full(X),[Vdim nT])); %cluster image for true T-stat
+clustimg = (reshape(full(Xreal),[Vdim nT])); % clustimg is 4D matrix containing the cluster sizes or t-values for all (merged) clusters
 
 %% create null distribution
 if isempty(distfile_load) %no distribution to load, so we create it from scratch
-    dist = zeros(length(np),1);
-    for p = 1:length(np) %loop over permutations
-        
-        first = 1;
-        %% first, load in files
-        for i = 1:length(tp);
-            fname = sprintf('%s/%s/%04.0f/cindex%05.0f',dirname,subdirname,tp(i),np(p));
-            f = nii.load(fname);
-            if first %first image - read in dimensions
-                nV = prod(size(f));
-                X = sparse(nV,nT);
-                first = 0;
+    if strcmp(S.permmeth, 'clustextent')
+        dist = zeros(length(np),1);
+        for p = 1:length(np) %loop over permutations
+            
+            first = 1;
+            %% first, load in files
+            for i = 1:length(tp);
+                fname = sprintf('%s/%s/%04.0f/cindex%05.0f',dirname,subdirname,tp(i),np(p));
+                f = nii.load(fname);
+                if first %first image - read in dimensions
+                    nV = prod(size(f));
+                    Xtmp = sparse(nV,nT); % XT is nVoxels x timepoints and contains t-values of clusters (needed for clustermass permutation tests)
+                    first = 0;
+                end
+                Xtmp(:,i) = f(:);
             end
-            X(:,i) = f(:);
+            
+            Xtmp = clusterX(Xtmp); % XI is nVoxels x timepoints and contains indexes of clusters (which are simply labels and have no meaning)
+            Ctmp = unique(Xtmp);
+            Ctmp(Ctmp==0) = [];
+            if ~isempty(Ctmp)
+                for i = 1:length(Ctmp)
+                    nVtmp(i) = sum(Xtmp(find(Xtmp))==Ctmp(i)); % nV is nClusters x 1 and contains the number of voxels in each cluster (needed for cluster extent permutation tests)
+                end
+            else
+                nVtmp = 0;
+            end
+            %now get the maximum number of voxels in a single cluster, and add to dist
+            dist(p) = max(nVtmp);
+            clear tmp;
+            fprintf('Permutation %0.0f complete...\n',p);
         end
         
-        X = clusterX(X);
-        %now get the maximum number of voxels in a single cluster, and add to dist
-        tmp = unique(X);
-        tmp(tmp==0) = [];
-        if ~isempty(tmp)
-            for i = 1:length(tmp)
-                nVtmp(i) = sum(X(find(X))==tmp(i)); %number of voxels in each indexed cluster
+    elseif strcmp(S.permmeth, 'clustmass')
+        dist = zeros(length(np),1);
+        for p = 1:length(np) %loop over permutations
+            first = 1;
+            %% first, load in files
+            for i = 1:length(tp);
+                %fname = sprintf('%s/%s/%04.0f/cindex%05.0f',dirname,subdirname,tp(i),np(p));
+                fname = sprintf('%s/%s/%04.0f/stats%04.0f_clusterm_tstat1_perm%05d.nii.gz',dirname,subdirname,tp(i),tp(i), np(p));
+                f = nii.load(fname);
+                if first %first image - read in dimensions
+                    nV = prod(size(f));
+                    Xtmp = sparse(nV,nT); % XT is nVoxels x timepoints and contains t-values of clusters (needed for clustermass permutation tests)
+                    first = 0;
+                end
+                Xtmp(:,i) = f(:);
             end
-        else
-            nVtmp = 0;
+            
+            Xtmp = clusterX(Xtmp); % XI is nVoxels x timepoints and contains indexes of clusters (which are simply labels and have no meaning)
+            Ctmp = unique(Xtmp);
+            dist(p) = max(Ctmp);
+            clear tmp;
+            fprintf('Permutation %0.0f complete...\n',p);
         end
-        
-        dist(p) = max(nVtmp);
-        clear tmp;
-        fprintf('Permutation %0.0f complete...\n',p);
     end
 else
     if ~iscell(distfile_load)
@@ -105,16 +138,16 @@ else
     else
         for i = 1:length(distfile_load)
             dist = [];
-            tmp = load(distfile_load{i});
-            dist = [dist tmp.dist];
+            Ctmp = load(distfile_load{i});
+            dist = [dist Ctmp.dist];
         end
     end
 end
 
 %% see where clusters lie in distribution, assign p-values and write images
 
-if save_images
-
+if save_images %not yet implemented for cluster mass
+    
     nC = length(nVreal);
     pVreal = zeros(nC,1);
     pVimg = clustimg;
@@ -123,8 +156,8 @@ if save_images
         pVimg(clustimg==full(Creal(i))) = full(pVreal(i));
     end
 
-    clustimg_fname = [dirname '/clust4d.nii.gz'];
-    pVimg_fname = [dirname '/clust4d_corrp.nii.gz'];
+    clustimg_fname = [dirname '/clust4d_' num2str(min(np)) '-' num2str(max(np)) '.nii.gz']; 
+    pVimg_fname = [dirname '/clust4d_corrp_' num2str(min(np)) '-' num2str(max(np)) '.nii.gz']; %make clear that the files that are saved are only for 100 permutations
     
     xform = [-gridstep 0 0 90; 0 gridstep 0 -126; 0 0 gridstep -72; 0 0 0 1]; 
     tres=1;
@@ -136,57 +169,48 @@ end
 if ~isempty(distfile_save)
     save(distfile_save,'nVreal','clustimg','Creal','dist','times','tstats');
 end
+end
 
-function X=clusterX(X);
-nV = size(X,1);
-nT = size(X,2);
-% X = nV by nT matrix - input matrix & directly modified to create output matrix
-% On input, X is a cluster index image *per time*; i.e. each X(:,t) gives cluster labels,
+function Xin=clusterX(Xin);
+nV = size(Xin,1);
+nT = size(Xin,2);
+% Xin = nV by nT matrix - input matrix & directly modified to create output matrix
+% On input, Xout is a cluster index image *per time*; i.e. each Xout(:,t) gives cluster labels,
 % like as output from cluster --oindex option; in particular, we do not require that cluster
 % indicies are unique over time on input.
-% On output, X is a cluster index image in 4D.
-nci = max(X(:,1))+1; % Next cluster index  (*not* number of clusters)
+% On output, Xout contains the cluster sizes (clustextent) or t-values
+% (clustmass) of all clusters merged over time
+%nci = max(Xin(:,1))+1; % Next cluster index  (*not* number of clusters)
 for t = 2:nT
-    I=X(:,t)>0; % mask of clusters for time t
-    for c=unique(X(I,t))'; % cluster indicies for time t
-        idx = find(X(:,t)==c);   % Voxels in cluster c at time t
-        Xb  = X(idx,t-1);        % Same voxels, but cluster indicies at time t-1
+    I=Xin(:,t)>0; % mask of clusters for time t
+    for c=unique(Xin(I,t))'; % cluster indicies for time t
+        idx = find(Xin(:,t)==c);   % Voxels in cluster c at time t
+        
+        Xb  = Xin(idx,t-1);        % Same voxels, but cluster indicies at time t-1
         uXb = unique(Xb(Xb>0)); % Unique labels in time t-1; assume that uXb is sorted
-        if length(uXb)==0
-            % No relabling to do, as there is no connected cluster at time t-1
-            
-            % Label new cluster with unique index
-            X(idx,t) = nci;
-            nci = nci+1;
-        else
-            if length(uXb)==1
-                % Exactly one cluster corresponds: the time t cluster takes on t-1's index.
-                % Tag it negative, to indicate this cluster in time t is newly labeled (to avoid
-                % conflict between cluster indcies in times 1:t-1 and time t).
-                X(idx,t) = -uXb;
-            else
-                % Multiple clusters corresponds, so we need to merge
-                ci = uXb(end); % use largest index for whole merged cluster
-                
-                % Relabel present cluster at time t, tagged negative
-                X(idx,t) = -ci;
-                
-                % Find other voxels that need to be relabeled
-                for bc = uXb(1:end-1)'
-                    idx0=find(X(I,t)==-bc);      % look for previously labeled clusters in time t
-                    X(I(idx0),t) = -ci;         % Relabel, but also tag it negative
-                    
-                    for tn = 1:t-1
-                        idx0=find(X(:,tn)==bc);  % Find that cluster in time 1:t-1
-                        X(idx0,tn) = ci;           % Relabel (no possibility of conflict in indicies, as 1:t-1
-                        % labels are coherent, so need to flag negative)
-                    end
-                end
+        
+        if length(uXb)==1
+            % Exactly one cluster corresponds: the time t cluster takes on t-1's index.
+            % Tag it negative, to indicate this cluster in time t is newly labeled (to avoid
+            % conflict between cluster indcies in times 1:t-1 and time t).
+            %Xout(idx,t) = -uXb;
+            idxx = logical(zeros(nV,nT));
+            idxx(find(Xin(:,1:t-1) == uXb)) = 1; % get indices of voxels from timepoint 1 to t-1 that need relabeling
+            nwlab = uXb + c; % new label is the sum of all values
+            Xin(idxx) = nwlab; % relabel connected clusters at previous timepoints
+            Xin(idx,t) = nwlab; % relabel cluster at current timepoint
+        elseif length(uXb)>1
+            % Multiple clusters corresponds, so we need to merge
+            idxx = logical(zeros(nV,nT)); 
+            nwlab = sum(uXb) + c; % new label is the sum of all values
+            for i=1:length(uXb)
+                idxx(find(Xin(:,1:t-1) == uXb(i))) = 1; % get indices of voxels from timepoint 1 to t-1 that need relabeling
             end
+            Xin(idxx) = nwlab; % relabel connected clusters at previous timepoints
+            Xin(idx,t) = nwlab; % relabel cluster at current timepoint
         end
     end
-    % clear the flags; X(:,1:t) now has consistent 4D cluster indicies
-    X(:,t) = abs(X(:,t));
+end
 end
 
 

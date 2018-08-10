@@ -180,23 +180,16 @@ for coni=1:length(S.first_level_copes_to_do),
 
 end
 
-nifs = dir([dirname filesep '*.nii.gz'])
+nifs = dir([dirname filesep '*.nii.gz']);
 nii_parcel_settings            = [];
 nii_parcel_settings.interp     = 'nearest';
 
 for idx = 1:length(nifs)
-    if strcmp(nifs(idx).name(1:7),'allsubs')
-        % Ignore the raw data
-        continue
-    end
-    if strcmp(nifs(idx).name(end-10:end),'parc.nii.gz')
-        % Ignore any niftis which are already expanded (and probably about
-        % to get overwritten)
-        continue
+    if ~strcmp(nifs(idx).name(1:7),'allsubs') && ~strcmp(nifs(idx).name(end-10:end),'parc.nii.gz')
+        dat = nii.load([dirname filesep nifs(idx).name]);
+        ROInets.nii_parcel_quicksave(squeeze(dat), S.parcel_assignments, strrep([dirname filesep nifs(idx).name],'.nii.gz','_parc.nii.gz'),nii_parcel_settings);
     end
 
-    dat = nii.load([dirname filesep nifs(idx).name]);
-    ROInets.nii_parcel_quicksave(dat, S.parcel_assignments, strrep([dirname filesep nifs(idx).name],'.nii.gz','_parc.nii.gz'),nii_parcel_settings);
 end
 
 

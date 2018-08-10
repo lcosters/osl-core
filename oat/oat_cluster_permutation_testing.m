@@ -32,6 +32,8 @@ function [ gstats, statsdir ] = oat_cluster_permutation_testing( S )
 % S.randomise_mask_fname % mask to limit perms to, can be 4d if perms are
 % to be 4d (but can use 3d mask in that context too). 
 % Needs to be in same native (low) spatial resolution as oat was run.
+% S.permmeth % permutation method that will be used in FSLs Randomise 
+% function: 'clustextent' or 'clustmass'
 %
 % MWW 2012
 
@@ -188,7 +190,12 @@ for coni=1:length(S.first_level_copes_to_do),
             
             permdir = sprintf('%s',dirname);
             mkdir(permdir);
-            tmp=['randomise -d ' dirname '/design.mat -t ' dirname '/design.con -i ' sprintf('%s/allsubs_time%04.0f', Sb.dirname, 1) ' -o ' sprintf('%s/stats', Sb.dirname) ' -c ' num2str(Sb.thresh) ' -R -n ' num2str(Sb.nP) ' --seed=0 -v ' num2str(Sb.group_varcope_spatial_smooth_std) ' -m ' sprintf('%s/mask_time%04.0f', Sb.dirname, 1)]; % -c means cluster-based thresholding
+            if strcmp(S.permmeth,'clustextent')
+                tmp=['randomise -d ' dirname '/design.mat -t ' dirname '/design.con -i ' sprintf('%s/allsubs_time%04.0f', Sb.dirname, 1) ' -o ' sprintf('%s/stats', Sb.dirname) ' -c ' num2str(Sb.thresh) ' -R -n ' num2str(Sb.nP) ' --seed=0 -v ' num2str(Sb.group_varcope_spatial_smooth_std) ' -m ' sprintf('%s/mask_time%04.0f', Sb.dirname, 1)]; % -c means cluster-based thresholding
+            elseif strcmp(S.permmeth,'clustmass')
+                tmp=['randomise -d ' dirname '/design.mat -t ' dirname '/design.con -i ' sprintf('%s/allsubs_time%04.0f', Sb.dirname, 1) ' -o ' sprintf('%s/stats', Sb.dirname) ' -C ' num2str(Sb.thresh) ' -R -n ' num2str(Sb.nP) ' --seed=0 -v ' num2str(Sb.group_varcope_spatial_smooth_std) ' -m ' sprintf('%s/mask_time%04.0f', Sb.dirname, 1)]; % -c means cluster-based thresholding
+            end
+            
             disp(tmp);
             runcmd(tmp);
             
@@ -199,33 +206,76 @@ for coni=1:length(S.first_level_copes_to_do),
             resamp_gridstep=gridstep;
   
             origname='tstat';
-            nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','cubic','enforce_mask',true);
-            origname='clustere_tstat';
-            nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','nearest','enforce_mask',true);
-            origname='clustere_corrp_tstat';
-            nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','nearest','enforce_mask',true);
-      
-            resamp_gridstep=2;
-            
-            origname='tstat';
-            nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','cubic','enforce_mask',true);
-            origname='clustere_tstat';
-            nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','nearest','enforce_mask',true);
-            origname='clustere_corrp_tstat';
-            nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','nearest','enforce_mask',true);
-            
-            statsdir=permdir;
+            if strcmp(S.permmeth,'clustextent')
+                nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','cubic','enforce_mask',true);
+                origname='clustere_tstat';
+                nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','nearest','enforce_mask',true);
+                origname='clustere_corrp_tstat';
+                nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','nearest','enforce_mask',true);
+                
+                resamp_gridstep=2;
+                
+                origname='tstat';
+                nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','cubic','enforce_mask',true);
+                origname='clustere_tstat';
+                nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','nearest','enforce_mask',true);
+                origname='clustere_corrp_tstat';
+                nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','nearest','enforce_mask',true);
+                
+                statsdir=permdir;
+                
+                
+            elseif strcmp(S.permmeth,'clustmass')
+                nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','cubic','enforce_mask',true);
+                origname='clusterm_tstat';
+                nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','nearest','enforce_mask',true);
+                origname='clusterm_corrp_tstat';
+                nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','nearest','enforce_mask',true);
+                
+                resamp_gridstep=2;
+                
+                origname='tstat';
+                nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','cubic','enforce_mask',true);
+                origname='clusterm_tstat';
+                nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','nearest','enforce_mask',true);
+                origname='clusterm_corrp_tstat';
+                nii.resample([permdir '/stats_' origname num2str(1) '.nii.gz'],[permdir '/' origname num2str(con) '_gc' num2str(gcon) '_' num2str(resamp_gridstep) 'mm.nii.gz'],resamp_gridstep,'interptype','nearest','enforce_mask',true);
+                
+                statsdir=permdir;
+                
+            end
             
         else,
             
+            Sb.permmeth = S.permmeth;
             Sb.write_cluster_script=S.write_cluster_script;
             Sb.fsl_version_4p1=S.fsl_version_4p1;
             Sb.times=times;
             Sb.matlab_exe_name=S.matlab_exe_name;
             gstats.clusterstats{con,gcon}=cluster4d_batch(Sb);
             
-            gstats.dir=Sb.dirname;
+            %% open dists_combined
             
+            nC = length(gstats.clusterstats{con,gcon}.nVreal);
+            pVreal = zeros(nC,1);
+            pVimg = gstats.clusterstats{con,gcon}.clustimg;
+            
+            for i = 1:nC %loop over real clusters
+                pVreal(i) = mean(gstats.clusterstats{con,gcon}.nVreal(i)>=gstats.clusterstats{con,gcon}.dist);
+                pVimg(gstats.clusterstats{con,gcon}.clustimg==full(gstats.clusterstats{con,gcon}.Creal(i))) = full(pVreal(i));
+            end
+            
+            clustimg_fname = [dirname '/clust4d_gc' num2str(S.group_level_copes_to_do(gconi)) '.nii.gz'];
+            pVimg_fname = [dirname '/clust4d_corrp_gc' num2str(S.group_level_copes_to_do(gconi)) '.nii.gz']; %make clear that the files that are saved are only for 100 permutations
+            gridstep = S.oat.source_recon.gridstep;
+            xform = [-gridstep 0 0 90; 0 gridstep 0 -126; 0 0 gridstep -72; 0 0 0 1];
+            tres=1;
+            nii.save(gstats.clusterstats{con,gcon}.clustimg,[gridstep gridstep gridstep tres],xform,clustimg_fname);
+            nii.save(pVimg,[gridstep gridstep gridstep tres],xform,pVimg_fname);
+            
+            gstats.clusterstats{con,gcon}.pVreal = pVreal;
+            gstats.clusterstats{con,gcon}.pVimg = pVimg;
+                        
             disp('Saving cluster stats.');
             
             oat_save_results(S.oat,gstats);
