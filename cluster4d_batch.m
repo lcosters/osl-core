@@ -179,15 +179,28 @@ elseif strcmp(S.permmeth, 'clustmass')
     
     %% 5.1 -run randomise
     fid = fopen([scriptdir '/split_merge_randomise5_1_1.sh'],'w');
-    for t = tp;
-        permdir = sprintf('%s/%s/%04.0f',dirname,subdirname,t);
-        mkdir(permdir);
-        fprintf(fid,['randomise -d ' [scriptdir '/design.mat'] ' -t ' [scriptdir '/design.con'] ' -i %s/allsubs_time%04.0f -o %s/stats%04.0f -C %1.2f -R -n ' num2str(S.nP) ...
-            ' --seed=1 -P -v ' num2str(S.group_varcope_spatial_smooth_std) ' --permout -m %s/mask_time%04.0f \n'],...
-            dirname,t, permdir,t,thresh,dirname,t); % -c means cluster-extent thresholding; -C means cluster-mass thresholding
-%         fprintf(fid,['randomise -d ' [scriptdir '/design.mat'] ' -t ' [scriptdir '/design.con'] ' -i %s/allsubs_time%04.0f -o %s/stats%04.0f -C %1.2f -R -n ' num2str(S.nP) ...
-%             ' --seed=%0.0f -v ' num2str(S.group_varcope_spatial_smooth_std) ' --permout -m %s/mask_time%04.0f \n'],...
-%             dirname,t, permdir,t,thresh,t,dirname,t); % -c means cluster-extent thresholding; -C means cluster-mass thresholding
+    if sum(S.contrasts) == 1 % if contrast is single group [1;0] or [0;1]
+        for t = tp;
+            permdir = sprintf('%s/%s/%04.0f',dirname,subdirname,t);
+            mkdir(permdir);
+            fprintf(fid,['randomise -d ' [scriptdir '/design.mat'] ' -t ' [scriptdir '/design.con'] ' -i %s/allsubs_time%04.0f -o %s/stats%04.0f -C %1.2f -R -n ' num2str(S.nP) ...
+                ' --seed=1 -P -v ' num2str(S.group_varcope_spatial_smooth_std) ' --permout -m %s/mask_time%04.0f \n'],...
+                dirname,t, permdir,t,thresh,dirname,t); % -c means cluster-extent thresholding; -C means cluster-mass thresholding
+            %         fprintf(fid,['randomise -d ' [scriptdir '/design.mat'] ' -t ' [scriptdir '/design.con'] ' -i %s/allsubs_time%04.0f -o %s/stats%04.0f -C %1.2f -R -n ' num2str(S.nP) ...
+            %             ' --seed=%0.0f -v ' num2str(S.group_varcope_spatial_smooth_std) ' --permout -m %s/mask_time%04.0f \n'],...
+            %             dirname,t, permdir,t,thresh,t,dirname,t); % -c means cluster-extent thresholding; -C means cluster-mass thresholding
+        end
+    else
+        for t = tp;
+            permdir = sprintf('%s/%s/%04.0f',dirname,subdirname,t);
+            mkdir(permdir);
+            fprintf(fid,['randomise -d ' [scriptdir '/design.mat'] ' -t ' [scriptdir '/design.con'] ' -i %s/allsubs_time%04.0f -o %s/stats%04.0f -C %1.2f -R -n ' num2str(S.nP) ...
+                ' --seed=1 -P -v ' num2str(S.group_varcope_spatial_smooth_std) ' --permout -m %s/mask_time%04.0f \n'],...
+                dirname,t, permdir,t,thresh,dirname,t); % -c means cluster-extent thresholding; -C means cluster-mass thresholding
+            %         fprintf(fid,['randomise -d ' [scriptdir '/design.mat'] ' -t ' [scriptdir '/design.con'] ' -i %s/allsubs_time%04.0f -o %s/stats%04.0f -C %1.2f -R -n ' num2str(S.nP) ...
+            %             ' --seed=%0.0f -v ' num2str(S.group_varcope_spatial_smooth_std) ' --permout -m %s/mask_time%04.0f \n'],...
+            %             dirname,t, permdir,t,thresh,t,dirname,t); % -c means cluster-extent thresholding; -C means cluster-mass thresholding
+        end
     end
     fclose(fid);
     %% write into overarching script
@@ -205,15 +218,15 @@ elseif strcmp(S.permmeth, 'clustmass')
     
     tmp=which('cluster4d_dist');
     if strcmp(tmp,''), error('cluster4d_dist not in path'); end
-    fprintf(fid,['addpath(''%s'');\n addpath(''%s/etc/matlab'');\n' ...
+    fprintf(fid,['addpath(''%s'');\naddpath(''%s/etc/matlab'');\n' ...
         'S.dirname = ''%s''; S.subdirname = ''%s''; S.distfile_save = ''%s''; S.np = 1:%0.0f;'],...
         tmp(1:end-17),getenv('FSLDIR'),dirname,subdirname,distfile_save,nP);
-    fprintf(fid,['addpath(''%sohba-external/ohba_utils'');'], tmp(1:end-25));
-    fprintf(fid,['addpath(''%sohba-external/nifti_tools'');'], tmp(1:end-25));
-    fprintf(fid,['S.tp = ',mat2str(tp) ';']);
-    fprintf(fid,['S.times = ',mat2str(times) ';']);
-    fprintf(fid,['S.permmeth = ' char(39) permmeth char(39) ';']);
-    fprintf(fid,'S.save_images = 0;\n S.gridstep = %0.0f; \n cluster4d_dist(S);',gridstep);
+    fprintf(fid,['\naddpath(''%sohba-external/ohba_utils'');'], tmp(1:end-25));
+    fprintf(fid,['\naddpath(''%sohba-external/nifti_tools'');'], tmp(1:end-25));
+    fprintf(fid,['\nS.tp = ',mat2str(tp) ';']);
+    fprintf(fid,['\nS.times = ',mat2str(times) ';']);
+    fprintf(fid,['\nS.permmeth = ' char(39) permmeth char(39) ';']);
+    fprintf(fid,'\nS.save_images = 0;\nS.gridstep = %0.0f; \ncluster4d_dist(S);',gridstep);
     fclose(fid);
     
     if(~write_cluster_script),

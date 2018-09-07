@@ -16,7 +16,7 @@ function [ gstats, statsdir ] = oat_cluster_permutation_testing( S )
 %
 % Input, e.g.:
 % S=[];
-% S.oat=oat; % oat with a group_level that has been run
+% S.oat=oat; % oat with a group_level that has been run?
 % S.time_range % time range
 % S.time_average % flag (0 or 1) if 1, this means that the cluster will be
 % in 3d, if 0 then will work in 4D.
@@ -253,16 +253,25 @@ for coni=1:length(S.first_level_copes_to_do),
             Sb.times=times;
             Sb.matlab_exe_name=S.matlab_exe_name;
             gstats.clusterstats{con,gcon}=cluster4d_batch(Sb);
-            
-            %% open dists_combined
+           
+            %% Finish permutation testing
             
             nC = length(gstats.clusterstats{con,gcon}.nVreal);
             pVreal = zeros(nC,1);
             pVimg = gstats.clusterstats{con,gcon}.clustimg;
             
+            fprintf([num2str(nC) ' clusters found using ' S.permmeth ' permutation testing \n']);
+            
             for i = 1:nC %loop over real clusters
-                pVreal(i) = mean(gstats.clusterstats{con,gcon}.nVreal(i)>=gstats.clusterstats{con,gcon}.dist);
-                pVimg(gstats.clusterstats{con,gcon}.clustimg==full(gstats.clusterstats{con,gcon}.Creal(i))) = full(pVreal(i));
+                if strcmp(S.permmeth,'clustextent')
+                    pVreal(i) = mean(gstats.clusterstats{con,gcon}.nVreal(i)>=gstats.clusterstats{con,gcon}.dist);
+                    pVimg(gstats.clusterstats{con,gcon}.clustimg==full(gstats.clusterstats{con,gcon}.nVreal(i))) = full(pVreal(i));
+                    fprintf(['Cluster ' num2str(i) ': size = ' num2str(gstats.clusterstats{con,gcon}.nVreal(i)) ' , cluster-size corrected p-value=' num2str(1-pVreal(i)) '\n']);
+                elseif strcmp(S.permmeth,'clustmass')
+                    pVreal(i) = mean(gstats.clusterstats{con,gcon}.Creal(i)>=gstats.clusterstats{con,gcon}.dist);
+                    pVimg(gstats.clusterstats{con,gcon}.clustimg==full(gstats.clusterstats{con,gcon}.Creal(i))) = full(pVreal(i));
+                    fprintf(['Cluster ' num2str(i) ': sum of t-values = ' num2str(gstats.clusterstats{con,gcon}.Creal(i)) ' , cluster-mass corrected p-value=' num2str(1-pVreal(i)) '\n']);
+                end
             end
             
             clustimg_fname = [dirname '/clust4d_gc' num2str(S.group_level_copes_to_do(gconi)) '.nii.gz'];

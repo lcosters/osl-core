@@ -216,17 +216,49 @@ for coni=1:length(S.first_level_copes_to_do),
             
         else,
             
+            Sb.permmeth = S.permmeth;
             Sb.write_cluster_script=S.write_cluster_script;
             Sb.fsl_version_4p1=S.fsl_version_4p1;
             Sb.times=times;
             Sb.matlab_exe_name=S.matlab_exe_name;
             gstats.clusterstats{con,gcon}=cluster4d_batch(Sb);
+           
+            %% Finish permutation testing
             
+            nC = length(gstats.clusterstats{con,gcon}.nVreal);
+            pVreal = zeros(nC,1);
+            pVimg = gstats.clusterstats{con,gcon}.clustimg;
+            
+            fprintf([num2str(nC) ' clusters found using ' S.permmeth ' permutation testing \n']);
+            
+            for i = 1:nC %loop over real clusters
+                if strcmp(S.permmeth,'clustextent')
+                    pVreal(i) = mean(gstats.clusterstats{con,gcon}.nVreal(i)>=gstats.clusterstats{con,gcon}.dist);
+                    pVimg(gstats.clusterstats{con,gcon}.clustimg==full(gstats.clusterstats{con,gcon}.nVreal(i))) = full(pVreal(i));
+                    fprintf(['Cluster ' num2str(i) ': size = ' num2str(gstats.clusterstats{con,gcon}.nVreal(i)) ' , cluster-size corrected p-value=' num2str(1-pVreal(i)) '\n']);
+                elseif strcmp(S.permmeth,'clustmass')
+                    pVreal(i) = mean(gstats.clusterstats{con,gcon}.Creal(i)>=gstats.clusterstats{con,gcon}.dist);
+                    pVimg(gstats.clusterstats{con,gcon}.clustimg==full(gstats.clusterstats{con,gcon}.Creal(i))) = full(pVreal(i));
+                    fprintf(['Cluster ' num2str(i) ': sum of t-values = ' num2str(gstats.clusterstats{con,gcon}.Creal(i)) ' , cluster-mass corrected p-value=' num2str(1-pVreal(i)) '\n']);
+                end
+            end
+            
+            clustimg_fname = [dirname '/clust4d_gc' num2str(S.group_level_copes_to_do(gconi)) '.nii.gz'];
+            pVimg_fname = [dirname '/clust4d_corrp_gc' num2str(S.group_level_copes_to_do(gconi)) '.nii.gz']; %make clear that the files that are saved are only for 100 permutations
+            gridstep = S.oat.source_recon.gridstep;
+            xform = [-gridstep 0 0 90; 0 gridstep 0 -126; 0 0 gridstep -72; 0 0 0 1];
+            tres=1;
+            nii.save(gstats.clusterstats{con,gcon}.clustimg,[gridstep gridstep gridstep tres],xform,clustimg_fname);
+            nii.save(pVimg,[gridstep gridstep gridstep tres],xform,pVimg_fname);
+            
+            gstats.clusterstats{con,gcon}.pVreal = pVreal;
+            gstats.clusterstats{con,gcon}.pVimg = pVimg;
+                        
             disp('Saving cluster stats.');
             
             oat_save_results(S.oat,gstats);
 
-            disp('Use osl_save_nii_stats to ouput gstats cluster results.');
+            disp('Use oat_save_nii_stats to ouput gstats cluster results.');
             
         end;
     end;
