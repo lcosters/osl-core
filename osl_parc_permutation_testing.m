@@ -8,7 +8,8 @@ function [ gstats, statsdir ] = osl_parc_permutation_testing( S )
 % S.first_level_copes_to_do=[3]; % list of 1st level contrasts to to perm
 % S.group_level_copes_to_do=[1];
 % S.parcel_assignments
-%
+% S.permmeth % permutation method that will be used in FSLs Randomise 
+% function: 'clustextent' or 'clustmass'
 
 OSLDIR = getenv('OSLDIR');
 
@@ -161,18 +162,51 @@ for coni=1:length(S.first_level_copes_to_do),
             statsdir=permdir;
 
         else,
-
+            
+            Sb.permmeth = S.permmeth;
             Sb.write_cluster_script=S.write_cluster_script;
             Sb.fsl_version_4p1=S.fsl_version_4p1;
             Sb.times=times;
             Sb.matlab_exe_name=S.matlab_exe_name;
             gstats.clusterstats{con,gcon}=cluster4d_batch(Sb);
+            
+            %% Finish permutation testing
+            
+            gstats.clusterstats{con,gcon}.clustimg = squeeze(gstats.clusterstats{con,gcon}.clustimg);
+            gstats.clusterstats{con,gcon}.tstats = squeeze(gstats.clusterstats{con,gcon}.tstats);
+            nC = length(gstats.clusterstats{con,gcon}.nVreal);
+            pVreal = zeros(nC,1);
+            pVimg = gstats.clusterstats{con,gcon}.clustimg;
+            
+            fprintf([num2str(nC) ' clusters found using ' S.permmeth ' permutation testing \n']);
+            
+            for i = 1:nC %loop over real clusters
+                if strcmp(S.permmeth,'clustextent')
+                    pVreal(i) = mean(gstats.clusterstats{con,gcon}.nVreal(i)>=gstats.clusterstats{con,gcon}.dist);
+                    pVimg(gstats.clusterstats{con,gcon}.clustimg==full(gstats.clusterstats{con,gcon}.nVreal(i))) = full(pVreal(i));
+                    fprintf(['Cluster ' num2str(i) ': size = ' num2str(gstats.clusterstats{con,gcon}.nVreal(i)) ' , cluster-size corrected p-value=' num2str(1-pVreal(i)) '\n']);
+                elseif strcmp(S.permmeth,'clustmass')
+                    pVreal(i) = mean(gstats.clusterstats{con,gcon}.Creal(i)>=gstats.clusterstats{con,gcon}.dist);
+                    pVimg(gstats.clusterstats{con,gcon}.clustimg==full(gstats.clusterstats{con,gcon}.Creal(i))) = full(pVreal(i));
+                    fprintf(['Cluster ' num2str(i) ': sum of t-values = ' num2str(gstats.clusterstats{con,gcon}.Creal(i)) ' , cluster-mass corrected p-value=' num2str(1-pVreal(i)) '\n']);
+                end
+            end
+            
+            clustimg_fname = [dirname '/clust4d_gc' num2str(S.group_level_copes_to_do(gconi))];
+            pVimg_fname = [dirname '/clust4d_corrp_gc' num2str(S.group_level_copes_to_do(gconi))];
+
+            nii_parcel_settings            = [];
+            nii_parcel_settings.interp     = 'nearest';
+            
+            ROInets.nii_parcel_quicksave(gstats.clusterstats{con,gcon}.clustimg, S.parcel_assignments, clustimg_fname,nii_parcel_settings)
+            ROInets.nii_parcel_quicksave(pVimg, S.parcel_assignments, pVimg_fname,nii_parcel_settings)
+            
+            gstats.clusterstats{con,gcon}.pVreal = pVreal;
+            gstats.clusterstats{con,gcon}.pVimg = pVimg;
 
             disp('Saving cluster stats.');
 
             oat_save_results(S.oat,gstats);
-
-            disp('Use osl_save_nii_stats to ouput gstats cluster results.');
 
         end;
 
@@ -180,16 +214,16 @@ for coni=1:length(S.first_level_copes_to_do),
 
 end
 
-nifs = dir([dirname filesep '*.nii.gz']);
-nii_parcel_settings            = [];
-nii_parcel_settings.interp     = 'nearest';
-
-for idx = 1:length(nifs)
-    if ~strcmp(nifs(idx).name(1:7),'allsubs') && ~strcmp(nifs(idx).name(end-10:end),'parc.nii.gz')
-        dat = nii.load([dirname filesep nifs(idx).name]);
-        ROInets.nii_parcel_quicksave(squeeze(dat), S.parcel_assignments, strrep([dirname filesep nifs(idx).name],'.nii.gz','_parc.nii.gz'),nii_parcel_settings);
-    end
-
-end
+% nifs = dir([dirname filesep '*.nii.gz']);
+% nii_parcel_settings            = [];
+% nii_parcel_settings.interp     = 'nearest';
+% 
+% for idx = 1:length(nifs)
+%     if ~strcmp(nifs(idx).name(1:7),'allsubs') && ~strcmp(nifs(idx).name(end-10:end),'parc.nii.gz')
+%         dat = nii.load([dirname filesep nifs(idx).name]);
+%         ROInets.nii_parcel_quicksave(squeeze(dat), S.parcel_assignments, strrep([dirname filesep nifs(idx).name],'.nii.gz','_parc.nii.gz'),nii_parcel_settings);
+%     end
+% 
+% end
 
 
