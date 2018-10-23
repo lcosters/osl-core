@@ -1,4 +1,4 @@
-function [corrp tstats] = osl_clustertf(c,thresh,nP,con,varcope_time_smooth_std,tres)
+function [corrp tstats] = osl_clustertf(c,thresh,nP,con,varcope_time_smooth_std,tres,permmeth,varargin)
 
 % [corrp tstats] = osl_clustertf(c,thresh,nP,con,varcope_time_smooth_std,tres)
 %
@@ -42,9 +42,14 @@ if nargin<5
   tres=[];
 end
 
+
 nS = size(c,1); %number of 'subjects' (recording sites)
 nF = size(c,2); %number of frequencies
 nT = size(c,3); %number of timebins
+
+if length(size(c))==4
+    c = squeeze(c(:,:,:,varargin{1,1}));
+end
 
 cr = reshape(c,nS,nF*nT);
 
@@ -69,29 +74,34 @@ for i = 1:nP
 
         for f=1:size(vg,1),
             dat=permute(vg(f,:),[2, 1, 3, 4]);
-            dat2 = fftconv(dat,fft_gauss);  
+            dat2 = fftconv(dat,fft_gauss);
             vg(f,:)=dat2;
         end;
-
+        
         cg=reshape(cg,nF,nT);
         tg=cg./sqrt(vg);
-
+        
     else
-        tg = reshape(tg,nF,nT);        
+        tg = reshape(tg,nF,nT);
     end;
-
+    
     [imlabel LL] = spm_bwlabel(double(tg>thresh),con);
     tmp = unique(imlabel);
     tmp(tmp==0) = [];
     nL = 0;
+
     if ~isempty(tmp)
-      for kk = 1:numel(tmp); %loop over clusters
-          k = tmp(kk);
-          nL(k) = sum(sum(imlabel==k));
-      end
+        for kk = 1:numel(tmp); %loop over clusters
+            k = tmp(kk);
+            if strcmp(permmeth,'clustextent')
+                nL(k) = sum(sum(imlabel==k));
+            elseif strcmp(permmeth,'clustmass')
+                nL(k) = sum(tg(imlabel==k));
+            end
+            nulldist(i)=max(nL);
+        end
     end
-    nulldist(i)=max(nL);
-  
+        
 end
 
 %run a one sample t-test on data and compare cluster size to
@@ -122,9 +132,13 @@ tmp(tmp==0) = [];
 cpimlabel = zeros(size(imlabel));
 if ~isempty(tmp)
     for kk = 1:numel(tmp) %loop over clusters
-      k = tmp(kk);
-      nL = sum(sum(imlabel==k));
-      cp = mean(nL>nulldist);
+        k = tmp(kk);
+        if strcmp(permmeth,'clustextent')
+            nL = sum(sum(imlabel==k));
+        elseif strcmp(permmeth,'clustmass')
+            nL= sum(tg(imlabel==k));
+        end
+        cp = mean(nL>nulldist);
       cpimlabel(imlabel==k)=cp;
     end
 end
