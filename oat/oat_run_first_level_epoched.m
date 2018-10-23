@@ -1101,7 +1101,11 @@ for subi_todo=1:length(first_level.sessions_to_do),
 
                                 for c=1:length(contrast_list),
                                     if(first_level.bc(c))
-                                        first_level_results.cope(indind,:,c,f)=first_level_results.cope(indind,:,c,f)-mean(first_level_results.cope(indind,baseline_time_indices,c,f),2);
+                                        if strcmp(first_level.tf_method,'morlet')
+                                        first_level_results.cope(indind,:,c,f)=10*log10(first_level_results.cope(indind,:,c,f) ./ repmat(mean(first_level_results.cope(indind,baseline_time_indices,c,f),2),1,size(first_level_results.cope,2)));
+                                        else
+                                            first_level_results.cope(indind,:,c,f)=first_level_results.cope(indind,:,c,f)-mean(first_level_results.cope(indind,baseline_time_indices,c,f),2);
+                                        end
                                     end;
                                 end;
 
