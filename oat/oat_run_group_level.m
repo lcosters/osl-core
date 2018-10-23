@@ -38,15 +38,12 @@ current_level_results=[];
 
 ft_progress('init', 'etf');
 
-for subi=1:length(current_level.subjects_to_do),
+for subi=current_level.subjects_to_do,
 
     ft_progress(subi/length(current_level.subjects_to_do));
 
-    sub=oat.subject_level.subjects_to_do(current_level.subjects_to_do(subi));  
-    subinds(subi)=sub;
-    
     % load in single subject stats
-    lower_level_results=oat_load_results(oat, lower_level.results_fnames{sub});
+    lower_level_results=oat_load_results(oat, lower_level.results_fnames{subi});
         
     if(subi==1)
         sc=[size(lower_level_results.cope) 1 1];
@@ -145,7 +142,7 @@ for subi=1:length(current_level.subjects_to_do),
     for con=1:size(lower_level_results.cope,4),
         % check for infs or zeros in stdcope
         if(sum(squash(isinf(lower_level_results.stdcope)))>0 || any(squash(lower_level_results.stdcope)==0)),
-            warning(['Subject ' num2str(sub) ' has infinite or zero stdcope for first-level contrast ' num2str(con) '. This may be due to there being zero trials for one of the first level conditions.']);
+            warning(['Subject ' num2str(subi) ' has infinite or zero stdcope for first-level contrast ' num2str(con) '. This may be due to there being zero trials for one of the first level conditions.']);
             if(strcmp(glm_method,'ols'))
                 error(['Can not continue with OLS.']);
             end;
@@ -172,6 +169,11 @@ pinvxtx=pinv(x'*x);
 
 group_contrast=current_level.group_contrast;
 
+% Small fix for when subjects are removed from subjects_to_do
+cope = cope(:,current_level.subjects_to_do,:,:,:);
+stdcope = stdcope(:,current_level.subjects_to_do,:,:,:);
+
+
 if(size(cope,2)~=num_subjects)
     error('mismatched data, size(cope,2)~=num_subjects. Check your design matrix is compatible with your subject_todo list.');
 end;
@@ -179,7 +181,7 @@ end;
 for gc=1:length(current_level.group_contrast),
     if(size(current_level.group_design_matrix,1)~=length(current_level.group_contrast{gc})),
         error(['Mismatched group design matrix and group contrast ' num2str(gc) '. Number of regressors are not the same.']);
-    end;
+    end
 end;
 
 if(length(current_level.group_contrast_name)~=length(current_level.group_contrast)),
@@ -272,27 +274,27 @@ for cc=1:length(current_level.first_level_contrasts_to_do),
     disp(['Preparing data']);
     
     %% temporary container to be reused for each contrast
-    cope_smooth_lower_level=zeros(size(cope,1),size(cope,2),length(lower_level_results.times),length(lower_level_results.frequencies),'single');% nvox x nsub x ntpts x nfreqs
-    stdcope_smooth_lower_level=inf(size(cope,1),size(cope,2),length(lower_level_results.times),length(lower_level_results.frequencies),'single');% nvox x nsub x ntpts x nfreqs
+    cope_smooth_lower_level=zeros(size(cope,1),num_subjects,length(lower_level_results.times),length(lower_level_results.frequencies),'single');% nvox x nsub x ntpts x nfreqs
+    stdcope_smooth_lower_level=inf(size(cope,1),num_subjects,length(lower_level_results.times),length(lower_level_results.frequencies),'single');% nvox x nsub x ntpts x nfreqs
     
     %% extract lower level data:
     for voxi=1:size(cope,1),
         
-        for sub=1:num_subjects,
+        for subi=1:num_subjects,
             
-            cope_smooth_lower_level(voxi,sub,:,:)=permute(cope(voxi,sub,:,c,:),[1,2,3,5,4]); % nvox x nsub x ntpts x nfreqs
-            stdcope_smooth_lower_level(voxi,sub,:,:)=permute(stdcope(voxi,sub,:,c,:),[1,2,3,5,4]); % nvox x nsub x ntpts x nfreqs
+            cope_smooth_lower_level(voxi,subi,:,:)=permute(cope(voxi,subi,:,c,:),[1,2,3,5,4]); % nvox x nsub x ntpts x nfreqs
+            stdcope_smooth_lower_level(voxi,subi,:,:)=permute(stdcope(voxi,subi,:,c,:),[1,2,3,5,4]); % nvox x nsub x ntpts x nfreqs
             
         end;
     end;
-    
+     
     %% check for subjects with extremely high lower level stdcopes            
     avg_stdcope=permute(mean(mean(mean(stdcope_smooth_lower_level,1),3),4),[2,1,3,4]);
     outlier_avg_stdcope=(((avg_stdcope-mean(avg_stdcope))/std(avg_stdcope))>3);
     if ~isempty(find(outlier_avg_stdcope)),
-        for sub=1:length(outlier_avg_stdcope),
-            if(outlier_avg_stdcope(sub))
-                warning(['Subject ' num2str(subinds(sub)) ' has high stdcope for first-level contrast ' num2str(con) '. This may be due to there being zero trials for one of the first level conditions. Consider removing this subject from the group analysis.']);           
+        for subi=1:length(outlier_avg_stdcope),
+            if(outlier_avg_stdcope(subi))
+                warning(['Subject ' num2str(subinds(subi)) ' has high stdcope for first-level contrast ' num2str(con) '. This may be due to there being zero trials for one of the first level conditions. Consider removing this subject from the group analysis.']);           
             end; 
         end;
     end;
@@ -302,17 +304,17 @@ for cc=1:length(current_level.first_level_contrasts_to_do),
         
         disp(['Spatial smoothing with FWHM=' num2str(current_level.spatial_smooth_fwhm) ' mm']);
         if strcmp(current_level_results.recon_method,'none'),
-            if(sub==1)
+            if(subi==1)
                 warning('Not implemented for sensor space - no spatial smoothing applied');
             end;
         else
             
             
-            for sub=1:num_subjects,
+            for subi=1:num_subjects,
                 for f=1:nfreq,
                     
-                    cope_smooth_lower_level(:,sub,:,f)=smooth_vol(permute(cope_smooth_lower_level(:,sub,:,f),[1 3 2 4]), lower_level_stdbrain_fname, current_level.spatial_smooth_fwhm);
-                    stdcope_smooth_lower_level(:,sub,:,f)=smooth_vol(permute(stdcope_smooth_lower_level(:,sub,:,f),[1 3 2 4]), lower_level_stdbrain_fname, current_level.spatial_smooth_fwhm);
+                    cope_smooth_lower_level(:,subi,:,f)=smooth_vol(permute(cope_smooth_lower_level(:,subi,:,f),[1 3 2 4]), lower_level_stdbrain_fname, current_level.spatial_smooth_fwhm);
+                    stdcope_smooth_lower_level(:,subi,:,f)=smooth_vol(permute(stdcope_smooth_lower_level(:,subi,:,f),[1 3 2 4]), lower_level_stdbrain_fname, current_level.spatial_smooth_fwhm);
                     
                 end;
             end;
@@ -328,13 +330,13 @@ for cc=1:length(current_level.first_level_contrasts_to_do),
         
         for voxi=1:size(cope_smooth_lower_level,1),
             
-            for sub=1:num_subjects,
+            for subi=1:num_subjects,
                 
-                dat=permute(cope_smooth_lower_level(voxi,sub,:,:),[3,5,1,2,4]);
-                datstd=permute(stdcope_smooth_lower_level(voxi,sub,:,:),[3,5,1,2,4]).^2;
+                dat=permute(cope_smooth_lower_level(voxi,subi,:,:),[3,5,1,2,4]);
+                datstd=permute(stdcope_smooth_lower_level(voxi,subi,:,:),[3,5,1,2,4]).^2;
                 
                 if(nfreq>1)
-                    if(sub==1)
+                    if(subi==1)
                         warning('Temporal smoothing (current_level.time_smooth_std>0) not implemented for time-freq analysis, so none is applied');
                     end;
                     
@@ -350,8 +352,8 @@ for cc=1:length(current_level.first_level_contrasts_to_do),
                     
                 end;
                 
-                cope_smooth_lower_level(voxi,sub,:,:)=dat2;
-                stdcope_smooth_lower_level(voxi,sub,:,:)=dat2std;
+                cope_smooth_lower_level(voxi,subi,:,:)=dat2;
+                stdcope_smooth_lower_level(voxi,subi,:,:)=dat2std;
                 
                 % figure;plot(dat);ho;plot(dat2,'r');
             end;
