@@ -906,7 +906,11 @@ for subi_todo=1:length(first_level.sessions_to_do),
                     if(sum(baseline_time_indices)>0)
                         % normalise by noise in baseline window:
                         for tri=1:size(dat,1), % indexes trials
+                            if first_level.bc_trialwise_dB % decibel conversion
+                                dat(tri,:,1) = 10*log10( dat(tri,:,1) ./ repmat(mean(dat(tri,baseline_time_indices,f)),1,length(dat(tri,:,1)) ));
+                            else
                                 dat(tri,:,1)=(dat(tri,:,1)-mean(dat(tri,baseline_time_indices,f)));
+                            end 
                         end;
                     else
                         warning('Could not baseline correct as there are no timepoints in the specified baseline period');
