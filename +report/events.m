@@ -14,7 +14,7 @@ function hfig = events(D)
     end
     
     vals = [ev.value];
-    counts = accumarray(vals(:),1)/2; % Divide by 2 because both up and down trigger
+    counts = accumarray(vals(:),1); % deleted divide by two
     vals = find(counts);
 
     bar(1:length(vals),counts(vals));
