@@ -434,13 +434,13 @@ for subi_todo=1:length(first_level.sessions_to_do),
         end;
     end;
 
-    if(first_level.do_glm_demean)
+    if(~first_level.do_glm_demean)
         disp('CAREFUL: are you sure you want the first_level.do_glm_demean flag off? This means that main effect contrasts will not be interpetable as mean effects');
     end;
 
     if(const_reg && first_level.do_glm_demean)
         disp('CAREFUL: are you sure you want the first_level.do_glm_demean flag on with constant regressors in the design matrix!!!!?');
-    elseif(~const_reg && ~first_level.do_glm_demean)
+    elseif(~const_reg && first_level.do_glm_demean)
         disp('CAREFUL: are you sure you want no first_level.do_glm_demean flag on with no constant regressors in the design matrix!!!!?');
     end;
 
@@ -906,11 +906,7 @@ for subi_todo=1:length(first_level.sessions_to_do),
                     if(sum(baseline_time_indices)>0)
                         % normalise by noise in baseline window:
                         for tri=1:size(dat,1), % indexes trials
-                            if first_level.bc_trialwise_dB % decibel conversion
-                                dat(tri,:,1) = 10*log10( dat(tri,:,1) ./ repmat(mean(dat(tri,baseline_time_indices,f)),1,length(dat(tri,:,1)) ));
-                            else
-                                dat(tri,:,1)=(dat(tri,:,1)-mean(dat(tri,baseline_time_indices,f)));
-                            end 
+                            dat(tri,:,1)=(dat(tri,:,1)-mean(dat(tri,baseline_time_indices,f)));
                         end;
                     else
                         warning('Could not baseline correct as there are no timepoints in the specified baseline period');
