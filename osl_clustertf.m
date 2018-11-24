@@ -105,10 +105,9 @@ for i = 1:nP
                 end
                 tsmax(jj)=max(nL); %two-sided max
             end
+            nulldist(i)=max(abs(tsmax)); 
         end
     end
-    nulldist(i)=max(abs(tsmax));
-
 end
 
 %run a one sample t-test on data and compare cluster size to
