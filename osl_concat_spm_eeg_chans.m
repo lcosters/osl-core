@@ -22,7 +22,11 @@ D2=clone(Sc.D,Sc.newname,[size(Sc.D,1)+size(Sc.newchandata,1),size(Sc.newchandat
 
 chanind=(size(Sc.D,1)+1):(size(Sc.D,1)+size(Sc.newchandata,1));
 
-D2(1:size(Sc.D,1),:,:)=Sc.D(:,:,:);
+try
+    D2(1:size(Sc.D,1),:,:)=Sc.D(:,:,:); %problems with sensor normalisation
+catch
+    D2(1:size(Sc.D,1),:,:)=Sc.D_double(:,:,:); 
+end
 
 D2(chanind,:,:)=Sc.newchandata;
 

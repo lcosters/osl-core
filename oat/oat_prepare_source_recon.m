@@ -457,6 +457,7 @@ for kk=1:NK,
     Sc.newchantype{kk+1}='CLASSPR';
 end;
 
+Sc.D_double = Sc.D(:,:,:);
 [ Dnew ] = osl_concat_spm_eeg_chans( Sc );
 
 %D.delete;
