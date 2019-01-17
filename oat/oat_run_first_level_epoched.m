@@ -363,7 +363,9 @@ for subi_todo=1:length(first_level.sessions_to_do),
         NKrecon=1;
         NKglm=NKrecon;
     else
-        NKrecon=numel(source_recon_results.BF.inverse.MEG.class);
+        flds = fieldnames(source_recon_results.BF.inverse);
+        NKrecon=numel(source_recon_results.BF.inverse.(char(flds(find(strncmp(fieldnames(source_recon_results.BF.inverse),'MEG',3))))).class); %checks if field is named MEG, MEGPLANAR or MEGMAG
+    
         NKglm=NKrecon;
 
         if NKrecon>1 && ~do_glm_statewise
