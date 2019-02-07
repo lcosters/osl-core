@@ -172,6 +172,7 @@ end
 end
 
 function Xin=clusterX(Xin);
+tic
 nV = size(Xin,1);
 nT = size(Xin,2);
 % Xin = nV by nT matrix - input matrix & directly modified to create output matrix
@@ -183,34 +184,37 @@ nT = size(Xin,2);
 %nci = max(Xin(:,1))+1; % Next cluster index  (*not* number of clusters)
 for t = 2:nT
     I=Xin(:,t)>0; % mask of clusters for time t
-    for c=unique(Xin(I,t))'; % cluster indicies for time t
-        idx = find(Xin(:,t)==c);   % Voxels in cluster c at time t
-        
-        Xb  = Xin(idx,t-1);        % Same voxels, but cluster indicies at time t-1
-        uXb = unique(Xb(Xb>0)); % Unique labels in time t-1; assume that uXb is sorted
-        
-        if length(uXb)==1
-            % Exactly one cluster corresponds: the time t cluster takes on t-1's index.
-            % Tag it negative, to indicate this cluster in time t is newly labeled (to avoid
-            % conflict between cluster indcies in times 1:t-1 and time t).
-            %Xout(idx,t) = -uXb;
-            idxx = logical(zeros(nV,nT));
-            idxx(find(Xin(:,1:t-1) == uXb)) = 1; % get indices of voxels from timepoint 1 to t-1 that need relabeling
-            nwlab = uXb + c; % new label is the sum of all values
-            Xin(idxx) = nwlab; % relabel connected clusters at previous timepoints
-            Xin(idx,t) = nwlab; % relabel cluster at current timepoint
-        elseif length(uXb)>1
-            % Multiple clusters corresponds, so we need to merge
-            idxx = logical(zeros(nV,nT)); 
-            nwlab = sum(uXb) + c; % new label is the sum of all values
-            for i=1:length(uXb)
-                idxx(find(Xin(:,1:t-1) == uXb(i))) = 1; % get indices of voxels from timepoint 1 to t-1 that need relabeling
+    tclust = unique(Xin(I,t))';
+    if ~isempty(tclust)
+        for c = 1:length(tclust)
+            idx = find(Xin(:,t)==tclust(c));   % Voxels in cluster c at time t
+            Xb  = Xin(idx,t-1);        % Same voxels, but cluster indicies at time t-1
+            uXb = unique(Xb(Xb>0)); % Unique labels in time t-1; assume that uXb is sorted
+            
+            if length(uXb)==1
+                % Exactly one cluster corresponds: the time t cluster takes on t-1's index.
+                % Tag it negative, to indicate this cluster in time t is newly labeled (to avoid
+                % conflict between cluster indcies in times 1:t-1 and time t).
+                %Xout(idx,t) = -uXb;
+                idxx = logical(zeros(nV,nT));
+                idxx(Xin(:,1:t-1) == uXb) = 1; % get indices of voxels from timepoint 1 to t-1 that need relabeling
+                nwlab = uXb + tclust(c); % new label is the sum of all values
+                Xin(idxx) = nwlab; % relabel connected clusters at previous timepoints
+                Xin(idx,t) = nwlab; % relabel cluster at current timepoint
+            elseif length(uXb)>1
+                % Multiple clusters corresponds, so we need to merge
+                idxx = logical(zeros(nV,nT));
+                nwlab = sum(uXb) + tclust(c); % new label is the sum of all values
+                for i=1:length(uXb)
+                    idxx(Xin(:,1:t-1) == uXb(i)) = 1; % get indices of voxels from timepoint 1 to t-1 that need relabeling
+                end
+                Xin(idxx) = nwlab; % relabel connected clusters at previous timepoints
+                Xin(idx,t) = nwlab; % relabel cluster at current timepoint
             end
-            Xin(idxx) = nwlab; % relabel connected clusters at previous timepoints
-            Xin(idx,t) = nwlab; % relabel cluster at current timepoint
         end
     end
 end
+toc
 end
 
 
