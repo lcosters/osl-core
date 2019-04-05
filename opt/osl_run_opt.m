@@ -409,7 +409,8 @@ for subi=1:length(opt.sessions_to_do),
         % ensure there is no .mat extension:
         [p spmname e] = fileparts(spm_files_basenames{subnum});
         spm_files_basenames{subnum}=[spmname];
-
+        D.copy([opt.dirname '/' spmname]);
+        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% Use any bad epochs passed in
         if ~isempty(opt.convert.bad_epochs{subnum}),
@@ -529,12 +530,12 @@ for subi=1:length(opt.sessions_to_do),
             S.mains_frequency = opt.africa.ident.mains_frequency;
             S.artefact_channels = opt.africa.ident.artefact_chans;
             S.auto_max_num_artefact_comps = opt.africa.ident.max_num_artefact_comps;
-            S.auto_do_mains = opt.africa.ident.do_mains
-            S.auto_mains_kurt_thresh = opt.africa.ident.mains_kurt_thresh
-            S.auto_do_kurt = opt.africa.ident.do_kurt
-            S.auto_kurtosis_thresh = opt.africa.ident.kurtosis_thresh
-            S.auto_kurtosis_wthresh = opt.africa.ident.kurtosis_wthresh
-            S.auto_artefact_chans_corr_thresh = opt.africa.ident.artefact_chans_corr_thresh
+            S.auto_do_mains = opt.africa.ident.do_mains;
+            S.auto_mains_kurt_thresh = opt.africa.ident.mains_kurt_thresh;
+            S.auto_do_kurt = opt.africa.ident.do_kurt;
+            S.auto_kurtosis_thresh = opt.africa.ident.kurtosis_thresh;
+            S.auto_kurtosis_wthresh = opt.africa.ident.kurtosis_wthresh;
+            S.auto_artefact_chans_corr_thresh = opt.africa.ident.artefact_chans_corr_thresh;
 
             spm_file=[opt.dirname filesep spm_files_basenames{subnum}];
             D = spm_eeg_load(D);
@@ -553,7 +554,7 @@ for subi=1:length(opt.sessions_to_do),
                 D2 = D2.montage('remove',1:D2.montage('getnumber'));
                 D2.save();
                 D = D2;
-                spm_files_basenames{subnum}=['A' spm_files_basenames{subnum}];                    
+                spm_files_basenames{subnum}=['Af' spm_files_basenames{subnum}];                    
             else
                 warning('AFRICA has been run, but bad components have not been removed');
             end
@@ -573,10 +574,10 @@ for subi=1:length(opt.sessions_to_do),
             D_continuous=spm_eeg_load(spm_file);
             S = struct();
             S.modalities=opt.modalities;
-            S.dummy_epoch_tsize    = opt.bad_segments.dummy_epoch_tsize   
-            S.measure_fns  = opt.bad_segments.outlier_measure_fns 
-            S.event_significance   = opt.bad_segments.event_significance  
-            S.channel_significance = opt.bad_segments.channel_significance
+            S.dummy_epoch_tsize    = opt.bad_segments.dummy_epoch_tsize;   
+            S.measure_fns  = opt.bad_segments.outlier_measure_fns; 
+            S.event_significance   = opt.bad_segments.event_significance;  
+            S.channel_significance = opt.bad_segments.channel_significance;
             D_continuous = osl_detect_artefacts(D_continuous,S);
             D_continuous.save();
 
@@ -802,9 +803,9 @@ for subi=1:length(opt.sessions_to_do),
 
             S = struct();
             S.modalities=opt.modalities;
-            S.measure_fns  = opt.outliers.outlier_measure_fns 
-            S.event_significance   = opt.outliers.event_significance  
-            S.channel_significance = opt.outliers.channel_significance
+            S.measure_fns  = opt.outliers.outlier_measure_fns ;
+            S.event_significance   = opt.outliers.event_significance ; 
+            S.channel_significance = opt.outliers.channel_significance;
             S.max_iter = 5;
 
             Dold=spm_eeg_load(spm_file);
